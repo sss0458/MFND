@@ -1,0 +1,13 @@
+{
+  "description": "Small manually curated benchmark for the PRO/CMIE engine. Keep the total case count low (for example 6-12) to control Gemini API cost.",
+  "cases": [
+    {
+      "id": "case_001",
+      "category": "out_of_context",
+      "text": "在这里填写待测新闻文本。",
+      "image_path": "/absolute/path/to/image.jpg",
+      "video_path": "",
+      "label_is_fake": true
+    }
+  ]
+}

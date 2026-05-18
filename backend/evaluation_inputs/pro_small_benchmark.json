@@ -1,0 +1,37 @@
+{
+  "description": "Lightweight manually curated benchmark for the PRO/CMIE engine. Four cases are used to control Gemini API cost while still covering aligned and mismatched multimodal evidence.",
+  "cases": [
+    {
+      "id": "food_tray_real_001",
+      "category": "cross_modal_mismatch",
+      "text": "这是一份食堂餐盘照片，可以看到红色托盘上放着一碗汤、米饭和一份偏深色的荤菜，整体更像日常配餐场景，而不是甜品或水果拼盘。",
+      "image_path": "/Users/sunhongzheng/Downloads/MFND/DeepFake_Detection_System/data/uploads/e809310ad7974b238243d54e3402c1e9_img.jpeg",
+      "video_path": "",
+      "label_is_fake": true
+    },
+    {
+      "id": "food_tray_fake_001",
+      "category": "cross_modal_mismatch",
+      "text": "图中是一盒酸奶水果沙拉，里面有大量火龙果、哈密瓜、猕猴桃和葡萄干，没有出现米饭、汤碗或熟食主菜。",
+      "image_path": "/Users/sunhongzheng/Downloads/MFND/DeepFake_Detection_System/data/uploads/e809310ad7974b238243d54e3402c1e9_img.jpeg",
+      "video_path": "",
+      "label_is_fake": true
+    },
+    {
+      "id": "fruit_bowl_real_001",
+      "category": "aligned_dessert_scene",
+      "text": "这是一份水果酸奶，黑色餐盒中能看到白色酸奶、火龙果、哈密瓜、猕猴桃和葡萄干，属于甜品或轻食类食品。",
+      "image_path": "/Users/sunhongzheng/Downloads/MFND/DeepFake_Detection_System/data/uploads/08629167b8214c169228398bd79897db_img_0.jpeg",
+      "video_path": "",
+      "label_is_fake": false
+    },
+    {
+      "id": "fruit_bowl_fake_001",
+      "category": "cross_modal_mismatch",
+      "text": "画面展示的是一份普通盒饭，主体是白米饭、炸鸡块和一只白色汤勺，完全不是水果或酸奶场景。",
+      "image_path": "/Users/sunhongzheng/Downloads/MFND/DeepFake_Detection_System/data/uploads/08629167b8214c169228398bd79897db_img_0.jpeg",
+      "video_path": "",
+      "label_is_fake": true
+    }
+  ]
+}

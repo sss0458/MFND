@@ -1,0 +1,49 @@
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Python environments / caches
+.venv/
+venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Node / frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Local environment files
+.env
+.env.*
+!.env.docker.example
+backend/web_system/.env
+
+# Runtime / logs
+logs/
+*.log
+.lan_runtime/
+.deploy_runtime/
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded/generated application data
+data/uploads/
+data/processed/
+backend/evaluation_outputs/
+
+# Large local assets not suited for GitHub
+best_model.pth
+*.pt
+*.pth
+*.ckpt
+
+# Misc
+coverage/
