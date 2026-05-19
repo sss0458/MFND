@@ -342,7 +342,7 @@ def detect_single_news(
             video_path=final_video_path
         )
         is_fake = detect_res["is_fake"]
-        confidence = detect_res["confidence"]
+        predicted_confidence = detect_res["confidence"]
         reason = detect_res["reasoning"]
     else:
         detect_res = mfnd_engine.detect(
@@ -351,7 +351,7 @@ def detect_single_news(
             video_path=final_video_path
         )
         is_fake = detect_res["is_fake"]
-        confidence = detect_res["confidence"]
+        predicted_confidence = detect_res.get("predicted_confidence", detect_res["confidence"])
         if mfnd_engine.is_text_compatible_mode():
             if cleaned_text:
                 if mfnd_engine.is_text_ensemble_enabled():
@@ -395,7 +395,12 @@ def detect_single_news(
                 else:
                     reason += f" 已提取 {len(saliency_urls_list)} 张高维特征注意力，并生成定位图。"
 
-    db_ai_score = confidence if is_fake else (100.0 - confidence)
+    fake_probability = detect_res.get(
+        "fake_probability",
+        predicted_confidence if is_fake else (100.0 - predicted_confidence),
+    )
+    real_probability = detect_res.get("real_probability", 100.0 - fake_probability)
+    db_ai_score = fake_probability
     task_title = title_prefix or f"[{model_type.upper()}] 多模态检测_{session_id[:6]}"
 
     new_task = DetectTask(
@@ -420,7 +425,10 @@ def detect_single_news(
         "taskNo": session_id,
         "title": new_task.title,
         "isFake": is_fake,
-        "confidence": confidence,
+        "confidence": fake_probability,
+        "fakeProbability": fake_probability,
+        "realProbability": real_probability,
+        "predictedConfidence": predicted_confidence,
         "features": reason,
         "url": public_media_urls[0] if public_media_urls else "",
         "mediaUrls": public_media_urls,

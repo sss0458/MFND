@@ -252,7 +252,7 @@
             <div v-for="item in resultData.batchItems" :key="item.id || item.index" class="batch-result-card" :class="item.isFake ? 'fake' : 'real'">
               <div class="batch-result-head">
                 <span>第 {{ item.index }} 条</span>
-                <span>{{ item.isFake ? 'FAKE' : 'REAL' }} / {{ item.confidence.toFixed(2) }}%</span>
+                <span>{{ item.isFake ? 'FAKE' : 'REAL' }} / 伪造概率 {{ item.confidence.toFixed(2) }}%</span>
               </div>
               <div class="batch-result-meta">
                 <span class="batch-media-tag" :class="item.hasImage ? 'with-image' : 'text-only'">
@@ -323,7 +323,7 @@
                 <div class="confidence-bar">
                   <div class="bar-fill" :style="{width: resultData.confidence + '%'}"></div>
                 </div>
-                <div class="confidence-val">置信度: {{ resultData.confidence.toFixed(2) }}%</div>
+                <div class="confidence-val">AI伪造概率: {{ resultData.confidence.toFixed(2) }}%</div>
               </div>
 
             </div>
@@ -595,7 +595,7 @@ const viewHistoryTask = (task) => {
   const auditComm = task.audit_comment || task.auditComment || '';
 
   resultData.isFake = aiScore > 50
-  resultData.confidence = aiScore > 50 ? aiScore : (100 - aiScore)
+  resultData.confidence = aiScore
   resultData.features = aiReason
   resultData.status = task.status
   resultData.auditResult = auditRes
@@ -705,8 +705,8 @@ const handleSingleSubmit = async () => {
     const delayTime = selectedEngine.value === 'pro' ? 2500 : 1500;
     
     setTimeout(async () => {
-      const { isFake, confidence, features, modelUsed } = res.data
-      resultData.isFake = isFake; resultData.confidence = confidence; resultData.features = features
+      const { isFake, confidence, fakeProbability, features, modelUsed } = res.data
+      resultData.isFake = isFake; resultData.confidence = fakeProbability ?? confidence; resultData.features = features
       resultData.status = 'pending'; resultData.auditResult = ''; resultData.auditComment = ''
       resultData.modelUsed = modelUsed || selectedEngine.value 
       
@@ -762,7 +762,7 @@ const handleBatchSubmit = async () => {
       title: item.title,
       content: item.content,
       isFake: item.isFake,
-      confidence: item.confidence,
+      confidence: item.fakeProbability ?? item.confidence,
       features: item.features,
       hasImage: Array.isArray(item.mediaUrls) && item.mediaUrls.some((url) => !isVideo(url))
     }))

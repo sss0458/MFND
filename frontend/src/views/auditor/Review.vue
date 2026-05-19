@@ -73,7 +73,7 @@
               </div>
               
               <div class="score" :class="item.ai_score >= 50 ? 'danger' : 'safe'">
-                {{ (item.ai_score >= 50 ? item.ai_score : 100 - item.ai_score).toFixed(1) }}%
+                {{ Number(item.ai_score || 0).toFixed(1) }}%
               </div>
             </div>
           </div>

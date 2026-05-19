@@ -467,9 +467,18 @@ class MFNDManager:
             fake_prob = probs[0][1].item()
 
         is_fake = fake_prob > 0.5
+        fake_probability = round(fake_prob * 100, 2)
+        real_probability = round((1 - fake_prob) * 100, 2)
+        predicted_confidence = round(
+            fake_prob * 100 if is_fake else (1 - fake_prob) * 100,
+            2,
+        )
         return {
             "is_fake": is_fake,
-            "confidence": round(fake_prob * 100 if is_fake else (1 - fake_prob) * 100, 2),
+            "confidence": fake_probability,
+            "fake_probability": fake_probability,
+            "real_probability": real_probability,
+            "predicted_confidence": predicted_confidence,
             "details": {
                 "engine_mode": self.mode,
                 "text_score": round(fake_prob if text else 0.0, 4),
@@ -484,6 +493,8 @@ class MFNDManager:
             return {
                 "is_fake": False,
                 "confidence": 50.0,
+                "fake_probability": 50.0,
+                "real_probability": 50.0,
                 "details": {
                     "engine_mode": self.mode,
                     "text_score": 0.0,
@@ -554,6 +565,8 @@ class MFNDManager:
         else:
             is_fake = primary_fake_prob >= primary_real_prob
         confidence = fused_fake_prob if is_fake else fused_real_prob
+        fake_probability_percent = round(fused_fake_prob * 100, 2)
+        real_probability_percent = round(fused_real_prob * 100, 2)
         confidence_percent = min(round(confidence * 100, 2), self.text_confidence_ceiling)
 
         if image_path or video_path:
@@ -566,7 +579,10 @@ class MFNDManager:
 
         return {
             "is_fake": is_fake,
-            "confidence": confidence_percent,
+            "confidence": fake_probability_percent,
+            "fake_probability": fake_probability_percent,
+            "real_probability": real_probability_percent,
+            "predicted_confidence": confidence_percent,
             "details": details,
         }
 
@@ -579,6 +595,8 @@ class MFNDManager:
             return {
                 "is_fake": False,
                 "confidence": 50.0,
+                "fake_probability": 50.0,
+                "real_probability": 50.0,
                 "details": {
                     "engine_mode": self.mode,
                     "text_score": 0.0,
