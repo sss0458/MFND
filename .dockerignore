@@ -9,7 +9,6 @@ backend/**/*.pyc
 backend/**/*.pyo
 backend/**/*.pyd
 frontend/node_modules
-frontend/dist
 frontend/.vite
 data/uploads
 data/processed

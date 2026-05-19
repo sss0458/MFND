@@ -20,12 +20,12 @@ from transformers import (
 
 LEGACY_TEXT_MODEL_NAME = "IDEA-CCNL/Erlangshen-Roberta-110M-Sentiment"
 VISION_MODEL_NAME = "google/vit-base-patch16-224-in21k"
-DEFAULT_TEXT_COMPATIBLE_MODEL_NAME = "Arko007/fact-check1-v1"
+DEFAULT_TEXT_COMPATIBLE_MODEL_NAME = "divyanshu-chauhan-7786/fake-news-roberta"
 DEFAULT_TEXT_COMPATIBLE_INPUT_STYLE = "plain"
-DEFAULT_TEXT_COMPATIBLE_FAKE_INDEX = 1
-DEFAULT_TEXT_COMPATIBLE_REAL_INDEX = 0
-DEFAULT_TEXT_ENSEMBLE_ENABLED = True
-DEFAULT_TEXT_ENSEMBLE_SECONDARY_MODEL_NAME = "divyanshu-chauhan-7786/fake-news-roberta"
+DEFAULT_TEXT_COMPATIBLE_FAKE_INDEX = 0
+DEFAULT_TEXT_COMPATIBLE_REAL_INDEX = 1
+DEFAULT_TEXT_ENSEMBLE_ENABLED = False
+DEFAULT_TEXT_ENSEMBLE_SECONDARY_MODEL_NAME = "Arko007/fact-check1-v1"
 DEFAULT_TEXT_ENSEMBLE_SECONDARY_INPUT_STYLE = "plain"
 DEFAULT_TEXT_ENSEMBLE_SECONDARY_FAKE_INDEX = 1
 DEFAULT_TEXT_ENSEMBLE_SECONDARY_REAL_INDEX = 0
@@ -125,6 +125,10 @@ class MFNDManager:
                 str(DEFAULT_TEXT_ENSEMBLE_FAKE_THRESHOLD),
             )
         )
+        self.allow_unsafe_pickle_weights = self._read_bool_env(
+            "FAST_ALLOW_UNSAFE_PICKLE_WEIGHTS",
+            False,
+        )
 
         self.text_model = None
         self.img_model = None
@@ -168,12 +172,8 @@ class MFNDManager:
                 self._initialize_text_compatible_mode()
                 return
             except Exception as exc:
-                print(f"⚠️ 文本兼容模式初始化失败，回退到 legacy_fusion: {exc}")
-                self.mode = "legacy_fusion"
-                try:
-                    self._initialize_legacy_mode()
-                except Exception as fallback_exc:
-                    self._initialize_degraded_mode(fallback_exc)
+                print(f"⚠️ 文本兼容模式初始化失败，转入安全降级模式: {exc}")
+                self._initialize_degraded_mode(exc)
                 return
 
         raise ValueError(f"Unsupported FAST engine mode: {self.mode}")
@@ -220,7 +220,7 @@ class MFNDManager:
         self.text_model = self._load_pretrained_with_fallback(
             AutoModel.from_pretrained,
             LEGACY_TEXT_MODEL_NAME,
-            use_safetensors=False,
+            use_safetensors=self._should_use_safetensors(LEGACY_TEXT_MODEL_NAME),
         ).to(self.device)
         self.text_model.eval()
         self.tokenizer = self._load_pretrained_with_fallback(
@@ -282,10 +282,15 @@ class MFNDManager:
             AutoModelForSequenceClassification.from_pretrained,
             model_name,
             trust_remote_code=trust_remote_code,
-            use_safetensors=False,
+            use_safetensors=self._should_use_safetensors(model_name),
         ).to(self.device)
         model.eval()
         return tokenizer, model
+
+    def _should_use_safetensors(self, model_name: str) -> bool:
+        if self.allow_unsafe_pickle_weights:
+            return False
+        return True
 
     def _prepare_text_input_by_style(self, text: str, input_style: str) -> str:
         normalized = " ".join(str(text).split())
@@ -313,7 +318,7 @@ class MFNDManager:
                 AutoModel.from_pretrained,
                 VISION_MODEL_NAME,
                 attn_implementation="eager",
-                use_safetensors=False,
+                use_safetensors=self._should_use_safetensors(VISION_MODEL_NAME),
             ).to(self.device)
             self.img_model.eval()
             self.img_processor = self._load_pretrained_with_fallback(
