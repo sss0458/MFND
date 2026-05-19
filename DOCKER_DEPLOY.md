@@ -25,8 +25,28 @@ cp .env.docker.example .env.docker
 - `APP_PORT`
 - `MYSQL_ROOT_PASSWORD`
 - `MYSQL_PASSWORD`
-- `GEMINI_API_KEY`  
-  如果暂时不用 `Pro` 引擎，可以先留空
+- FAST 双模型融合配置
+  默认已恢复为双模型联合判别：`Arko007/fact-check1-v1` + `divyanshu-chauhan-7786/fake-news-roberta`。如果服务器模型下载慢，可以先在本地预热 Hugging Face 缓存，或保持 `HF_ENDPOINT` 为可访问镜像。
+- PRO 大模型 API 配置
+  如果 Gemini 因地区不可用，推荐使用阿里云百炼 DashScope 的 OpenAI 兼容多模态接口：
+
+```env
+PRO_API_PROVIDER=openai_compatible
+PRO_API_KEY=你的百炼APIKey
+PRO_API_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+PRO_MODEL_NAME=qwen-vl-plus
+```
+
+  如果继续使用 Gemini，则设置：
+
+```env
+PRO_API_PROVIDER=gemini
+GEMINI_API_KEY=你的GeminiKey
+```
+
+  如果暂时不用 `Pro` 引擎，可以把这些 Key 留空，前端会显示 PRO 离线。
+
+已有服务器部署如果已经存在 `.env.docker`，模板不会自动覆盖它；请手动同步上面的 FAST/PRO 配置后再重启容器。
 
 ## 3. 启动服务
 

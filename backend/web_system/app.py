@@ -193,7 +193,7 @@ def ensure_engine_available(model_type: str, db: Session):
     if model_type.lower() == "pro" and not is_pro_engine_ready():
         raise HTTPException(
             status_code=503,
-            detail="【服务熔断】PRO 引擎当前不可用，请先配置 GEMINI_API_KEY 或暂时切换到 FAST。",
+            detail="【服务熔断】PRO 引擎当前不可用，请配置 PRO_API_KEY/PRO_API_BASE_URL/PRO_MODEL_NAME，或使用 GEMINI_API_KEY，或暂时切换到 FAST。",
         )
 
     engine_key = f"engine_{model_type.lower()}"
