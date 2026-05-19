@@ -734,7 +734,12 @@ const handleSingleSubmit = async () => {
 
     }, delayTime)
   } catch (error) {
-    ElMessage.error(error?.response?.data?.detail || '引擎连接失败')
+    const detail = error?.response?.data?.detail
+    const status = error?.response?.status
+    const fallbackMessage = status === 504
+      ? 'PRO 引擎请求超时，请稍后重试或切换到 FAST'
+      : '引擎连接失败'
+    ElMessage.error(detail || fallbackMessage)
     isAnalyzing.value = false
   }
 }
@@ -784,7 +789,12 @@ const handleBatchSubmit = async () => {
     await fetchHistory()
     ElMessage.success({ message: `批量检测完成，共处理 ${total} 条新闻`, customClass: 'cyber-toast' })
   } catch (error) {
-    ElMessage.error(error?.response?.data?.detail || '批量检测失败')
+    const detail = error?.response?.data?.detail
+    const status = error?.response?.status
+    const fallbackMessage = status === 504
+      ? '批量检测请求超时，请缩小批次后重试'
+      : '批量检测失败'
+    ElMessage.error(detail || fallbackMessage)
   } finally {
     isAnalyzing.value = false
   }
