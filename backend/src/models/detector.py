@@ -148,7 +148,7 @@ class MFNDManager:
         )
         self.allow_unsafe_pickle_weights = self._read_bool_env(
             "FAST_ALLOW_UNSAFE_PICKLE_WEIGHTS",
-            False,
+            True,
         )
 
         self.text_model = None
@@ -193,8 +193,12 @@ class MFNDManager:
                 self._initialize_text_compatible_mode()
                 return
             except Exception as exc:
-                print(f"⚠️ 文本兼容模式初始化失败，转入安全降级模式: {exc}")
-                self._initialize_degraded_mode(exc)
+                print(f"⚠️ 文本兼容模式初始化失败，回退到 legacy_fusion: {exc}")
+                self.mode = "legacy_fusion"
+                try:
+                    self._initialize_legacy_mode()
+                except Exception as fallback_exc:
+                    self._initialize_degraded_mode(fallback_exc)
                 return
 
         raise ValueError(f"Unsupported FAST engine mode: {self.mode}")

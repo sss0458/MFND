@@ -26,7 +26,7 @@ cp .env.docker.example .env.docker
 - `MYSQL_ROOT_PASSWORD`
 - `MYSQL_PASSWORD`
 - FAST 双模型融合配置
-  默认已恢复为双模型联合判别：`Arko007/fact-check1-v1` + `divyanshu-chauhan-7786/fake-news-roberta`。如果服务器模型下载慢，可以先在本地预热 Hugging Face 缓存，或保持 `HF_ENDPOINT` 为可访问镜像。
+  默认已恢复为双模型联合判别：`Arko007/fact-check1-v1` + `divyanshu-chauhan-7786/fake-news-roberta`。这套配置会按最早线上表现较好的策略允许加载 PyTorch `.bin` 权重；如果服务器模型下载慢，可以先在本地预热 Hugging Face 缓存，或保持 `HF_ENDPOINT` 为可访问镜像。
 - PRO 大模型 API 配置
   如果 Gemini 因地区不可用，推荐使用阿里云百炼 DashScope 的 OpenAI 兼容多模态接口：
 
