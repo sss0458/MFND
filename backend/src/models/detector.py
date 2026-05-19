@@ -33,6 +33,9 @@ DEFAULT_TEXT_ENSEMBLE_SECONDARY_TRUST_REMOTE_CODE = False
 DEFAULT_TEXT_ENSEMBLE_PRIMARY_WEIGHT = 0.7
 DEFAULT_TEXT_ENSEMBLE_FAKE_THRESHOLD = 0.7
 DEFAULT_FAST_MODE = "text_compatible"
+DEFAULT_TEXT_MAX_LENGTH = 256
+DEFAULT_TEXT_SOFTMAX_TEMPERATURE = 2.5
+DEFAULT_TEXT_CONFIDENCE_CEILING = 99.0
 
 
 class MultimodalDetector(nn.Module):
@@ -123,6 +126,24 @@ class MFNDManager:
             os.environ.get(
                 "FAST_TEXT_ENSEMBLE_FAKE_THRESHOLD",
                 str(DEFAULT_TEXT_ENSEMBLE_FAKE_THRESHOLD),
+            )
+        )
+        self.text_max_length = int(
+            os.environ.get("FAST_TEXT_MAX_LENGTH", str(DEFAULT_TEXT_MAX_LENGTH))
+        )
+        self.text_softmax_temperature = max(
+            float(
+                os.environ.get(
+                    "FAST_TEXT_SOFTMAX_TEMPERATURE",
+                    str(DEFAULT_TEXT_SOFTMAX_TEMPERATURE),
+                )
+            ),
+            1e-6,
+        )
+        self.text_confidence_ceiling = float(
+            os.environ.get(
+                "FAST_TEXT_CONFIDENCE_CEILING",
+                str(DEFAULT_TEXT_CONFIDENCE_CEILING),
             )
         )
         self.allow_unsafe_pickle_weights = self._read_bool_env(
@@ -363,12 +384,12 @@ class MFNDManager:
             return_tensors="pt",
             padding=True,
             truncation=True,
-            max_length=512,
+            max_length=self.text_max_length,
         ).to(self.device)
 
         with torch.no_grad():
             outputs = model(**inputs)
-            probs = F.softmax(outputs.logits, dim=1)
+            probs = F.softmax(outputs.logits / self.text_softmax_temperature, dim=1)
 
         return probs[0][fake_index].item(), probs[0][real_index].item()
 
@@ -533,15 +554,19 @@ class MFNDManager:
         else:
             is_fake = primary_fake_prob >= primary_real_prob
         confidence = fused_fake_prob if is_fake else fused_real_prob
+        confidence_percent = min(round(confidence * 100, 2), self.text_confidence_ceiling)
 
         if image_path or video_path:
             details["note"] = (
                 f"图片/视频输入已接收，但{self.describe_mode()}当前仍以新闻文本作为主判据。"
             )
+        details["text_max_length"] = self.text_max_length
+        details["text_softmax_temperature"] = round(self.text_softmax_temperature, 4)
+        details["text_confidence_ceiling"] = round(self.text_confidence_ceiling, 2)
 
         return {
             "is_fake": is_fake,
-            "confidence": round(confidence * 100, 2),
+            "confidence": confidence_percent,
             "details": details,
         }
 
