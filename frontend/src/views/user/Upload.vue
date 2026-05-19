@@ -324,6 +324,8 @@
                   <div class="bar-fill" :style="{width: resultData.confidence + '%'}"></div>
                 </div>
                 <div class="confidence-val">AI伪造概率: {{ resultData.confidence.toFixed(2) }}%</div>
+                <div class="confidence-val">当前判定置信度: {{ resultData.predictedConfidence.toFixed(2) }}%</div>
+                <div class="confidence-val">REAL 概率: {{ resultData.realProbability.toFixed(2) }}%</div>
               </div>
 
             </div>
@@ -464,6 +466,8 @@ const resultData = reactive({
   isBatch: false,
   isFake: false,
   confidence: 0,
+  predictedConfidence: 0,
+  realProbability: 0,
   features: '',
   mediaUrls: [],
   status: 'pending',
@@ -481,6 +485,8 @@ const resetResultData = () => {
   resultData.isBatch = false
   resultData.isFake = false
   resultData.confidence = 0
+  resultData.predictedConfidence = 0
+  resultData.realProbability = 0
   resultData.features = ''
   resultData.mediaUrls = []
   resultData.status = 'pending'
@@ -596,6 +602,8 @@ const viewHistoryTask = (task) => {
 
   resultData.isFake = aiScore > 50
   resultData.confidence = aiScore
+  resultData.predictedConfidence = aiScore > 50 ? aiScore : (100 - aiScore)
+  resultData.realProbability = 100 - aiScore
   resultData.features = aiReason
   resultData.status = task.status
   resultData.auditResult = auditRes
@@ -705,8 +713,12 @@ const handleSingleSubmit = async () => {
     const delayTime = selectedEngine.value === 'pro' ? 2500 : 1500;
     
     setTimeout(async () => {
-      const { isFake, confidence, fakeProbability, features, modelUsed } = res.data
-      resultData.isFake = isFake; resultData.confidence = fakeProbability ?? confidence; resultData.features = features
+      const { isFake, confidence, fakeProbability, realProbability, predictedConfidence, features, modelUsed } = res.data
+      resultData.isFake = isFake
+      resultData.confidence = fakeProbability ?? confidence
+      resultData.predictedConfidence = predictedConfidence ?? confidence
+      resultData.realProbability = realProbability ?? (100 - (fakeProbability ?? confidence))
+      resultData.features = features
       resultData.status = 'pending'; resultData.auditResult = ''; resultData.auditComment = ''
       resultData.modelUsed = modelUsed || selectedEngine.value 
       

@@ -115,6 +115,14 @@ mfnd_engine = MFNDManager()
 print("🧠 正在初始化 MLLM 语义推理引擎 (CMIE) - [Pro Mode]...")
 cmie_engine = CMIEEngine()
 
+
+def is_fast_engine_ready() -> bool:
+    return getattr(mfnd_engine, "mode", "") != "degraded"
+
+
+def is_pro_engine_ready() -> bool:
+    return bool(getattr(cmie_engine, "available", False))
+
 # ================= 数据校验模型 (Pydantic) =================
 class LoginSchema(BaseModel):
     username: str
@@ -176,6 +184,18 @@ def normalize_security_answer(answer: Optional[str]) -> str:
 
 
 def ensure_engine_available(model_type: str, db: Session):
+    if model_type.lower() == "fast" and not is_fast_engine_ready():
+        raise HTTPException(
+            status_code=503,
+            detail="【服务熔断】FAST 引擎当前未完成初始化，请稍后重试或联系管理员。",
+        )
+
+    if model_type.lower() == "pro" and not is_pro_engine_ready():
+        raise HTTPException(
+            status_code=503,
+            detail="【服务熔断】PRO 引擎当前不可用，请先配置 GEMINI_API_KEY 或暂时切换到 FAST。",
+        )
+
     engine_key = f"engine_{model_type.lower()}"
     engine_record = db.query(SystemConfig).filter(SystemConfig.config_key == engine_key).first()
     if engine_record and engine_record.config_value.lower() == "false":
@@ -1186,25 +1206,39 @@ async def update_user_profile(profile_data: UserProfileSchema, db: Session = Dep
 @app.get("/system/engine_status")
 async def get_engine_status(db: Session = Depends(get_db)):
     """获取引警状态，如果数据库没有记录则初始化默认值"""
+    fast_ready = is_fast_engine_ready()
+    pro_ready = is_pro_engine_ready()
+
     # 查找 FAST 状态
     fast_record = db.query(SystemConfig).filter(SystemConfig.config_key == "engine_fast").first()
     if not fast_record:
-        fast_record = SystemConfig(config_key="engine_fast", config_value="true", description="FAST 引擎开关")
+        fast_record = SystemConfig(
+            config_key="engine_fast",
+            config_value="true" if fast_ready else "false",
+            description="FAST 引擎开关",
+        )
         db.add(fast_record)
         
     # 查找 PRO 状态
     pro_record = db.query(SystemConfig).filter(SystemConfig.config_key == "engine_pro").first()
     if not pro_record:
-        pro_record = SystemConfig(config_key="engine_pro", config_value="true", description="PRO(CMIE) 引擎开关")
+        pro_record = SystemConfig(
+            config_key="engine_pro",
+            config_value="true" if pro_ready else "false",
+            description="PRO(CMIE) 引擎开关",
+        )
         db.add(pro_record)
-        
+
+    fast_enabled = fast_record.config_value.lower() == "true" and fast_ready
+    pro_enabled = pro_record.config_value.lower() == "true" and pro_ready
+
     db.commit() # 如果有新建记录，提交保存
 
     return {
         "code": 200,
         "data": {
-            "fast": fast_record.config_value.lower() == "true",
-            "pro": pro_record.config_value.lower() == "true"
+            "fast": fast_enabled,
+            "pro": pro_enabled
         }
     }
 

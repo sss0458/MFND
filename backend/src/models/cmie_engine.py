@@ -14,6 +14,7 @@ class CMIEEngine:
         
         # 从环境变量中读取 API Key。请确保在运行前设置了 export GEMINI_API_KEY="你的key"
         self.api_key = os.environ.get("GEMINI_API_KEY")
+        self.available = bool(self.api_key)
         if not self.api_key:
             print("⚠️ [警告] 未找到 GEMINI_API_KEY 环境变量！请务必配置，否则 Pro 引擎将调用失败。")
         
