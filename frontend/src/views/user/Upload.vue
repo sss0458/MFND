@@ -328,6 +328,14 @@
 
             </div>
           </div>
+
+          <ReviewChat
+            v-if="currentTask?.id"
+            class="result-chat"
+            :task-id="currentTask.id"
+            role="user"
+            :sender-name="profileForm.nickname || authStore.username || '用户'"
+          />
         </div>
 
       </div>
@@ -387,6 +395,7 @@ import { SwitchButton, Picture, VideoCamera, CircleCheckFilled, WarningFilled, P
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import { uploadMedia, uploadBatchNews } from '@/api/task'
+import ReviewChat from '@/components/ReviewChat.vue'
 const api = axios.create({ baseURL: '/api' })
 
 const authStore = useAuthStore()
@@ -955,6 +964,7 @@ const handleLogout = () => { if (authStore.logout) authStore.logout(); router.pu
 .batch-result-text { color: #f8fafc; line-height: 1.7; margin-bottom: 12px; white-space: pre-wrap; }
 .batch-result-reason { color: #94a3b8; line-height: 1.6; font-size: 13px; white-space: pre-wrap; }
 .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; flex: 1; }
+.result-chat { margin-top: 24px; min-height: 340px; }
 .section-label { font-size: 12px; color: #a0aec0; margin-bottom: 15px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; }
 .evidence-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; }
 .gallery-item { border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); aspect-ratio: 1; background: #000;}

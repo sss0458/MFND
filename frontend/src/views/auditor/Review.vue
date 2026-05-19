@@ -182,6 +182,13 @@
                   </button>
                 </div>
               </div>
+
+              <ReviewChat
+                class="auditor-chat"
+                :task-id="currentTask.id"
+                role="auditor"
+                :sender-name="profileForm.nickname || authStore.username || '审核员'"
+              />
             </div>
             </div>
         </template>
@@ -248,6 +255,7 @@ import { useAuthStore } from '@/store/auth'
 import { SwitchButton, ArrowLeft, ArrowRight, User } from '@element-plus/icons-vue'
 import { ElMessage, ElNotification } from 'element-plus'
 import axios from 'axios'
+import ReviewChat from '@/components/ReviewChat.vue'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -514,14 +522,17 @@ const handleLogout = () => { if(authStore.logout) authStore.logout(); router.pus
 @keyframes scanDown { 0% { top: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
 
 /* 右侧侧边栏区 */
-.right-column { display: flex; flex-direction: column; gap: 20px; height: 100%; overflow: hidden; }
-.text-panel { flex: 1; padding: 20px; display: flex; flex-direction: column; min-height: 0; }
+.right-column { display: flex; flex-direction: column; gap: 20px; height: 100%; overflow-y: auto; padding-right: 4px; }
+.right-column::-webkit-scrollbar { width: 4px; }
+.right-column::-webkit-scrollbar-thumb { background: rgba(0,242,254,0.25); border-radius: 2px; }
+.text-panel { flex: 0 0 210px; padding: 20px; display: flex; flex-direction: column; min-height: 0; }
 .cyber-text-box { flex: 1; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 8px; font-size: 13px; line-height: 1.6; color: #e2e8f0; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05); }
 .cyber-text-box::-webkit-scrollbar { width: 4px; }
 .cyber-text-box::-webkit-scrollbar-thumb { background: rgba(0,242,254,0.3); }
 
 /* 决策与意见区 */
 .decision-panel { flex-shrink: 0; padding: 20px; display: flex; flex-direction: column; height: auto; }
+.auditor-chat { flex: 0 0 320px; min-height: 320px; }
 
 /* 将提示框变为 flex 列布局，让头部标题固定，内容区滚动 */
 .ai-suggestion { background: rgba(0,0,0,0.3); padding: 15px; border-left: 3px solid; border-radius: 8px; margin-bottom: 20px; display: flex; flex-direction: column; }

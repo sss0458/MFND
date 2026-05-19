@@ -80,6 +80,19 @@ class DetectTask(Base):
     audit_comment = Column(String(255), nullable=True)   # 审查员的备注
     is_user_deleted = Column(Boolean, default=False)
 
+
+# 3. 审核沟通消息表
+class ReviewMessage(Base):
+    __tablename__ = "review_messages"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    task_id = Column(Integer, ForeignKey("detect_task.id"), nullable=False, index=True, comment="关联检测任务")
+    sender_role = Column(String(20), nullable=False, comment="发送方角色: user/auditor")
+    sender_name = Column(String(50), nullable=True, comment="发送方显示名")
+    content = Column(Text, nullable=False, comment="消息内容")
+    create_time = Column(DateTime, default=datetime.datetime.now, comment="发送时间")
+
+
 # 3. 多模态引擎信息表
 class SystemConfig(Base):
     __tablename__ = "system_configs"

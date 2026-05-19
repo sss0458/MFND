@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 # 👇 引入数据库配置和模型
-from database import get_db, User, DetectTask
+from database import get_db, User, DetectTask, ReviewMessage
 
 # --------------------------------------------------------------------------
 # 1. 📂 核心路径配置 (最关键的部分)
@@ -77,6 +77,8 @@ PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
 
 # 定义内存字典
 CAPTCHA_STORE = {}
+REVIEW_PRESENCE = {}
+PRESENCE_WINDOW_SECONDS = 15
 
 # 自动创建文件夹
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -122,6 +124,18 @@ class AuditSchema(BaseModel):
     task_id: int
     result: str # REAL / FAKE
     comment: str
+
+
+class ReviewMessageSchema(BaseModel):
+    sender_role: str
+    sender_name: Optional[str] = None
+    content: str
+
+
+class ReviewPresenceSchema(BaseModel):
+    role: str
+    name: Optional[str] = None
+
 
 class UserCreateSchema(BaseModel):
     username: str
@@ -222,6 +236,35 @@ def serialize_task(task: DetectTask, request: Request) -> dict:
         "audit_comment": task.audit_comment,
         "is_user_deleted": task.is_user_deleted,
     }
+
+
+def serialize_review_message(message: ReviewMessage) -> dict:
+    return {
+        "id": message.id,
+        "task_id": message.task_id,
+        "sender_role": message.sender_role,
+        "sender_name": message.sender_name or ("审核员" if message.sender_role == "auditor" else "用户"),
+        "content": message.content,
+        "create_time": message.create_time.isoformat() if message.create_time else None,
+    }
+
+
+def get_review_presence_snapshot(task_id: int) -> dict:
+    now = time.time()
+    snapshot = {}
+    task_presence = REVIEW_PRESENCE.get(task_id, {})
+
+    for role in ("user", "auditor"):
+        entry = task_presence.get(role) or {}
+        last_seen = float(entry.get("last_seen") or 0)
+        is_online = now - last_seen <= PRESENCE_WINDOW_SECONDS
+        snapshot[role] = {
+            "online": is_online,
+            "name": entry.get("name") or ("审核员" if role == "auditor" else "用户"),
+            "last_seen": datetime.fromtimestamp(last_seen).isoformat() if last_seen else None,
+        }
+
+    return snapshot
 
 
 def build_task_query(db: Session, role: str, status_filter: Optional[str]):
@@ -799,6 +842,101 @@ async def audit_task(audit: AuditSchema, db: Session = Depends(get_db)):
     task.audit_comment = audit.comment
     db.commit()
     return {"msg": "审核已提交，数据已进入训练集"}
+
+
+@app.get("/tasks/{task_id}/messages")
+async def get_review_messages(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(DetectTask).filter(DetectTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    messages = (
+        db.query(ReviewMessage)
+        .filter(ReviewMessage.task_id == task_id)
+        .order_by(ReviewMessage.create_time.asc(), ReviewMessage.id.asc())
+        .all()
+    )
+
+    return {
+        "code": 200,
+        "data": [serialize_review_message(message) for message in messages],
+    }
+
+
+@app.post("/tasks/{task_id}/messages")
+async def create_review_message(
+    task_id: int,
+    payload: ReviewMessageSchema,
+    db: Session = Depends(get_db),
+):
+    task = db.query(DetectTask).filter(DetectTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    sender_role = (payload.sender_role or "").strip().lower()
+    if sender_role not in {"user", "auditor"}:
+        raise HTTPException(status_code=400, detail="发送方角色错误")
+
+    content = (payload.content or "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="消息内容不能为空")
+    if len(content) > 1000:
+        raise HTTPException(status_code=400, detail="消息内容最多 1000 字")
+
+    sender_name = (payload.sender_name or "").strip()[:50] or ("审核员" if sender_role == "auditor" else "用户")
+    message = ReviewMessage(
+        task_id=task_id,
+        sender_role=sender_role,
+        sender_name=sender_name,
+        content=content,
+    )
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+
+    return {
+        "code": 200,
+        "data": serialize_review_message(message),
+    }
+
+
+@app.put("/tasks/{task_id}/presence")
+async def update_review_presence(
+    task_id: int,
+    payload: ReviewPresenceSchema,
+    db: Session = Depends(get_db),
+):
+    task = db.query(DetectTask).filter(DetectTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    role = (payload.role or "").strip().lower()
+    if role not in {"user", "auditor"}:
+        raise HTTPException(status_code=400, detail="在线角色错误")
+
+    role_presence = REVIEW_PRESENCE.setdefault(task_id, {})
+    role_presence[role] = {
+        "name": (payload.name or "").strip()[:50] or ("审核员" if role == "auditor" else "用户"),
+        "last_seen": time.time(),
+    }
+
+    return {
+        "code": 200,
+        "data": get_review_presence_snapshot(task_id),
+    }
+
+
+@app.get("/tasks/{task_id}/presence")
+async def get_review_presence(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(DetectTask).filter(DetectTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    return {
+        "code": 200,
+        "data": get_review_presence_snapshot(task_id),
+    }
+
 
 # 5. 系统监控数据 (管理员用)
 @app.get("/monitor_stats")
