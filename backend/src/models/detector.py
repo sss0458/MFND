@@ -36,7 +36,6 @@ DEFAULT_FAST_MODE = "text_compatible"
 DEFAULT_TEXT_MAX_LENGTH = 512
 DEFAULT_TEXT_SOFTMAX_TEMPERATURE = 1.0
 DEFAULT_TEXT_CONFIDENCE_CEILING = 99.0
-DEFAULT_SCORE_LINEAR_GAIN = 4.0
 
 
 class MultimodalDetector(nn.Module):
@@ -146,15 +145,6 @@ class MFNDManager:
                 "FAST_TEXT_CONFIDENCE_CEILING",
                 str(DEFAULT_TEXT_CONFIDENCE_CEILING),
             )
-        )
-        self.score_linear_gain = max(
-            float(
-                os.environ.get(
-                    "FAST_SCORE_LINEAR_GAIN",
-                    str(DEFAULT_SCORE_LINEAR_GAIN),
-                )
-            ),
-            1.0,
         )
         self.allow_unsafe_pickle_weights = self._read_bool_env(
             "FAST_ALLOW_UNSAFE_PICKLE_WEIGHTS",
@@ -327,12 +317,6 @@ class MFNDManager:
             return False
         return True
 
-    def _amplify_probability(self, probability: float) -> float:
-        amplified = 0.5 + (probability - 0.5) * self.score_linear_gain
-        lower_bound = max(0.0, 1.0 - self.text_confidence_ceiling / 100.0)
-        upper_bound = min(1.0, self.text_confidence_ceiling / 100.0)
-        return min(max(amplified, lower_bound), upper_bound)
-
     def _prepare_text_input_by_style(self, text: str, input_style: str) -> str:
         normalized = " ".join(str(text).split())
         if input_style == "title_content_prompt":
@@ -487,12 +471,10 @@ class MFNDManager:
             fake_prob = probs[0][1].item()
 
         is_fake = fake_prob > 0.5
-        amplified_fake_prob = self._amplify_probability(fake_prob)
-        amplified_real_prob = 1 - amplified_fake_prob
-        fake_probability = round(amplified_fake_prob * 100, 2)
-        real_probability = round(amplified_real_prob * 100, 2)
+        fake_probability = round(fake_prob * 100, 2)
+        real_probability = round((1 - fake_prob) * 100, 2)
         predicted_confidence = round(
-            amplified_fake_prob * 100 if is_fake else amplified_real_prob * 100,
+            fake_prob * 100 if is_fake else (1 - fake_prob) * 100,
             2,
         )
         return {
@@ -506,8 +488,6 @@ class MFNDManager:
                 "text_score": round(fake_prob if text else 0.0, 4),
                 "img_score": round(fake_prob if image_path else 0.0, 4),
                 "video_score": round(fake_prob if video_path else 0.0, 4),
-                "raw_fake_probability": round(fake_prob, 4),
-                "score_linear_gain": round(self.score_linear_gain, 4),
             },
         }
 
@@ -588,11 +568,9 @@ class MFNDManager:
             is_fake = fused_fake_prob >= self.text_ensemble_fake_threshold
         else:
             is_fake = primary_fake_prob >= primary_real_prob
-        amplified_fake_prob = self._amplify_probability(fused_fake_prob)
-        amplified_real_prob = 1 - amplified_fake_prob
-        confidence = amplified_fake_prob if is_fake else amplified_real_prob
-        fake_probability_percent = round(amplified_fake_prob * 100, 2)
-        real_probability_percent = round(amplified_real_prob * 100, 2)
+        confidence = fused_fake_prob if is_fake else fused_real_prob
+        fake_probability_percent = round(fused_fake_prob * 100, 2)
+        real_probability_percent = round(fused_real_prob * 100, 2)
         confidence_percent = min(round(confidence * 100, 2), self.text_confidence_ceiling)
 
         if image_path or video_path:
@@ -602,9 +580,6 @@ class MFNDManager:
         details["text_max_length"] = self.text_max_length
         details["text_softmax_temperature"] = round(self.text_softmax_temperature, 4)
         details["text_confidence_ceiling"] = round(self.text_confidence_ceiling, 2)
-        details["score_linear_gain"] = round(self.score_linear_gain, 4)
-        details["raw_text_score"] = round(fused_fake_prob, 4)
-        details["raw_text_real_score"] = round(fused_real_prob, 4)
 
         return {
             "is_fake": is_fake,
